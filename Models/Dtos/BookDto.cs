@@ -1,3 +1,4 @@
+namespace BookAPIService.Models.Dtos;
 public class BookDto
 {
     public string Title { get; set; } = string.Empty;
