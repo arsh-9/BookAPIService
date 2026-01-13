@@ -1,16 +1,19 @@
 using BookAPIService.Clients;
 using BookAPIService.Models.Dtos;
 using BookAPIService.Models.OpenLibrary;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace BookAPIService.Services;
 
 public class BookService : IBookService
 {
     private readonly IOpenLibraryClient _client;
+    private readonly IMemoryCache _cache;
 
-    public BookService(IOpenLibraryClient client)
+    public BookService(IOpenLibraryClient client, IMemoryCache cache)
     {
         _client = client;
+        _cache = cache;
     }
 
     public async Task<IEnumerable<BookSearchDto>> SearchBookAsync(
@@ -51,11 +54,27 @@ public class BookService : IBookService
     {
         limit = Math.Min(limit <= 0 ? 10 : limit, 10);
         offset = Math.Max(offset, 0);
-
+        var cacheKey = BuildCacheKey(subject, limit, offset);
+        if (_cache.TryGetValue(cacheKey, out IEnumerable<BookListDto> cached))
+        {
+            return cached;
+        }
         var response = await _client.GetBySubjectAsync(subject, limit, offset);
+        var bookLists = MapBookListResponse(response);
+        _cache.Set(
+            cacheKey,
+            bookLists,
+            new MemoryCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10),
+                SlidingExpiration = TimeSpan.FromMinutes(2)
+            });
 
-        return MapBookListResponse(response);
+        return bookLists;
     }
+
+    private static string BuildCacheKey(string subject, int limit, int offset)
+        => $"books:list:{subject.ToLower()}:{limit}:{offset}";
 
     private IEnumerable<BookListDto> MapBookListResponse(OpenLibraryListResponse response)
     {
