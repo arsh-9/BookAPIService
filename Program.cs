@@ -1,14 +1,27 @@
 using BookAPIService.Clients;
 using BookAPIService.Services;
+using Polly;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddHttpClient<IOpenLibraryClient, OpenLibraryClient>(client =>
 {
-    client.BaseAddress = new Uri("https://openlibrary.org/");
-    client.Timeout = TimeSpan.FromSeconds(30);
-});
+    client.BaseAddress = new Uri("https://openlibrary.org.invalid/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+})
+.AddPolicyHandler((sp, _) =>
+{
+    var logger = sp.GetRequiredService<ILogger<OpenLibraryClient>>();
+    return PollyPolicies.GetCircuitBreakerPolicy(logger);
+})
+.AddPolicyHandler((sp, _) =>
+{
+    var logger = sp.GetRequiredService<ILogger<OpenLibraryClient>>();
+    return PollyPolicies.GetRetryPolicy(logger);
+})
+.AddPolicyHandler(Policy.TimeoutAsync<HttpResponseMessage>(5));
+
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
