@@ -4,5 +4,5 @@ namespace BookAPIService.Clients;
 
 public interface IOpenLibraryClient
 {
-    Task<OpenLibrarySearchResponse> SearchAsync(string query);
+    Task<OpenLibrarySearchResponse> SearchAsync(string searchKey, string searchValue, string fields, int limit);
 }

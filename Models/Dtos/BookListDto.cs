@@ -1,5 +1,5 @@
 namespace BookAPIService.Models.Dtos;
-public class BookDto
+public class BookListDto
 {
     public string Title { get; set; } = string.Empty;
     public int? PublishYear { get; set; }
