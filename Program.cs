@@ -7,6 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddHttpClient<IOpenLibraryClient, OpenLibraryClient>(client =>
 {
     client.BaseAddress = new Uri("https://openlibrary.org/");
+    client.Timeout = TimeSpan.FromSeconds(30);
 });
 
 builder.Services.AddControllers();
@@ -24,6 +25,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseAuthorization();
 

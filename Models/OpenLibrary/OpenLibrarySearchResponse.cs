@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace BookAPIService.Models.Dtos;
+namespace BookAPIService.Models.OpenLibrary;
 
 public class OpenLibrarySearchResponse
 {

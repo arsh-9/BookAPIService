@@ -1,32 +1,33 @@
 using System.Text.Json.Serialization;
 
-namespace BookAPIService.Models.Dtos;
+namespace BookAPIService.Models.OpenLibrary;
 
-// public class OpenLibraryListResponse
-// {
-// [JsonPropertyName("docs")]
-// public List<OpenLibraryDoc> Docs { get; set; } = new();
-// }
+public class OpenLibraryListResponse
+{
+    [JsonPropertyName("works")]
+    public List<OpenLibraryWork>? Works { get; set; }
+}
 
+public class OpenLibraryWork
+{
+    [JsonPropertyName("title")]
+    public string? Title { get; set; }
 
-// public class OpenLibraryDoc
-// {
-// [JsonPropertyName("title")]
-// public string? Title { get; set; }
+    [JsonPropertyName("first_publish_year")]
+    public int? FirstPublishYear { get; set; }
 
+    [JsonPropertyName("authors")]
+    public List<OpenLibraryAuthorDto>? Authors { get; set; }
 
-// [JsonPropertyName("first_publish_year")]
-// public int? FirstPublishYear { get; set; }
+    [JsonPropertyName("subject")]
+    public List<string>? Subjects { get; set; }
 
+    [JsonPropertyName("cover_id")]
+    public int? CoverId { get; set; }
+}
 
-// [JsonPropertyName("author_name")]
-// public List<string>? AuthorName { get; set; }
-
-
-// [JsonPropertyName("subject")]
-// public List<string>? Subject { get; set; }
-
-
-// [JsonPropertyName("cover_i")]
-// public int? CoverI { get; set; }
-// }
+public sealed class OpenLibraryAuthorDto
+{
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+}
