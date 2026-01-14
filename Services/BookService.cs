@@ -11,12 +11,15 @@ public class BookService : IBookService
     private readonly IOpenLibraryClient _client;
     private readonly IMemoryCache _cache;
     private readonly CacheOptions _cacheOptions;
+    private readonly ILogger<BookService> _logger;
 
-    public BookService(IOpenLibraryClient client, IMemoryCache cache, IOptions<CacheOptions> cacheOptions)
+    public BookService(IOpenLibraryClient client, IMemoryCache cache, IOptions<CacheOptions> cacheOptions,
+    ILogger<BookService> logger)
     {
         _client = client;
         _cache = cache;
         _cacheOptions = cacheOptions.Value;
+        _logger = logger;
     }
 
     public async Task<IEnumerable<BookSearchDto>> SearchBookAsync(
@@ -29,13 +32,22 @@ public class BookService : IBookService
         // Title takes precedence if available
         var isTitleSearch = !string.IsNullOrWhiteSpace(title);
 
+        _logger.LogInformation("Executing search with {SearchType}={SearchValue}",
+            isTitleSearch ? "title" : "query",
+            isTitleSearch ? title : query);
+
         var response = await _client.SearchAsync(
             searchKey: isTitleSearch ? "title" : "q",
             searchValue: isTitleSearch ? title : query,
             limit: 1,
             fields: OpenLibraryFields.BookSearchFields);
 
-        return MapBookResponse(response);
+        var book = MapBookResponse(response);
+
+        _logger.LogInformation("Book search completed with {Result}",
+            book.Count() == 0 ? "NoMatches" : "MatchesFound");
+
+        return book;
     }
 
     private IEnumerable<BookSearchDto> MapBookResponse(OpenLibrarySearchResponse response)
@@ -60,11 +72,16 @@ public class BookService : IBookService
         var cacheKey = BuildCacheKey(subject, limit, offset);
         if (_cache.TryGetValue(cacheKey, out IEnumerable<BookListDto> cached))
         {
+            _logger.LogInformation("Cache hit for key {CacheKey}", cacheKey);
             return cached;
         }
+        _logger.LogInformation("Cache miss for key {CacheKey}", cacheKey);
+
         var response = await _client.GetBySubjectAsync(subject, limit, offset);
         var bookLists = MapBookListResponse(response);
-        _cache.Set(
+        if (bookLists.Any())
+        {
+            _cache.Set(
             cacheKey,
             bookLists,
             new MemoryCacheEntryOptions
@@ -72,7 +89,13 @@ public class BookService : IBookService
                 AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(_cacheOptions.ListCacheMinutes),
                 SlidingExpiration = TimeSpan.FromMinutes(_cacheOptions.SlidingCacheMinutes)
             });
+            _logger.LogInformation(
+            "Cached {Count} books for key {CacheKey}",
+            bookLists.Count(),
+            cacheKey);
+        }
 
+        _logger.LogInformation("Fetched {Count} Books from external API", bookLists.Count());
         return bookLists;
     }
 

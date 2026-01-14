@@ -34,12 +34,18 @@ public class OpenLibraryClient : IOpenLibraryClient
 
     public async Task<OpenLibraryListResponse?> GetBySubjectAsync(string subject, int limit, int offset)
     {
-        var response = await _httpClient.GetAsync(
-            $"subjects/{Uri.EscapeDataString(subject)}.json?limit={limit}&offset={offset}");
+        var path = $"subjects/{Uri.EscapeDataString(subject)}.json";
+        var queryParams = new Dictionary<string, string?>
+        {
+            ["limit"] = limit.ToString(),
+            ["offset"] = offset.ToString()
+        };
+        var url = QueryHelpers.AddQueryString(path, queryParams);
+        var response = await _httpClient.GetAsync(url);
 
         if (!response.IsSuccessStatusCode)
         {
-            return null;
+            throw new ExternalServiceException("Open Library search failed");
         }
         return await response.Content.ReadFromJsonAsync<OpenLibraryListResponse>();
     }
