@@ -4,12 +4,12 @@ using Polly.Extensions.Http;
 
 public static class PollyPolicies
 {
-    public static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy(ILogger logger)
+    public static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy(ILogger logger, ResilienceOptions options)
     {
         return HttpPolicyExtensions
             .HandleTransientHttpError()
             .WaitAndRetryAsync(
-                retryCount: 2,
+                retryCount: options.RetryCount,
                 sleepDurationProvider: retryAttempt =>
                     TimeSpan.FromMilliseconds(200 * Math.Pow(2, retryAttempt)),
                     onRetry: (outcome, timespan, retryAttempt, context) =>
@@ -21,13 +21,13 @@ public static class PollyPolicies
             });
     }
 
-    public static IAsyncPolicy<HttpResponseMessage> GetCircuitBreakerPolicy(ILogger logger)
+    public static IAsyncPolicy<HttpResponseMessage> GetCircuitBreakerPolicy(ILogger logger, ResilienceOptions options)
     {
         return HttpPolicyExtensions
             .HandleTransientHttpError()
             .CircuitBreakerAsync(
-                handledEventsAllowedBeforeBreaking: 3,
-                durationOfBreak: TimeSpan.FromSeconds(30),
+                handledEventsAllowedBeforeBreaking: options.CircuitBreakerFailures,
+                durationOfBreak: TimeSpan.FromSeconds(options.CircuitBreakerDurationSeconds),
                 onBreak: (outcome, breakDelay) =>
             {
                 logger.LogError(

@@ -2,6 +2,7 @@ using BookAPIService.Clients;
 using BookAPIService.Models.Dtos;
 using BookAPIService.Models.OpenLibrary;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 
 namespace BookAPIService.Services;
 
@@ -9,11 +10,13 @@ public class BookService : IBookService
 {
     private readonly IOpenLibraryClient _client;
     private readonly IMemoryCache _cache;
+    private readonly CacheOptions _cacheOptions;
 
-    public BookService(IOpenLibraryClient client, IMemoryCache cache)
+    public BookService(IOpenLibraryClient client, IMemoryCache cache, IOptions<CacheOptions> cacheOptions)
     {
         _client = client;
         _cache = cache;
+        _cacheOptions = cacheOptions.Value;
     }
 
     public async Task<IEnumerable<BookSearchDto>> SearchBookAsync(
@@ -66,8 +69,8 @@ public class BookService : IBookService
             bookLists,
             new MemoryCacheEntryOptions
             {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10),
-                SlidingExpiration = TimeSpan.FromMinutes(2)
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(_cacheOptions.ListCacheMinutes),
+                SlidingExpiration = TimeSpan.FromMinutes(_cacheOptions.SlidingCacheMinutes)
             });
 
         return bookLists;

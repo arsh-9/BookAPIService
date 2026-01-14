@@ -1,26 +1,47 @@
 using BookAPIService.Clients;
 using BookAPIService.Services;
+using Microsoft.Extensions.Options;
 using Polly;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddHttpClient<IOpenLibraryClient, OpenLibraryClient>(client =>
+
+builder.Services.Configure<OpenLibraryOptions>(
+    builder.Configuration.GetSection("OpenLibrary"));
+
+builder.Services.Configure<ResilienceOptions>(
+    builder.Configuration.GetSection("Resilience"));
+
+builder.Services.Configure<CacheOptions>(
+    builder.Configuration.GetSection("Cache"));
+
+builder.Services.AddHttpClient<IOpenLibraryClient, OpenLibraryClient>((sp, client) =>
 {
-    client.BaseAddress = new Uri("https://openlibrary.org.invalid/");
-    client.Timeout = TimeSpan.FromSeconds(10);
+    var options = sp.GetRequiredService<IOptions<OpenLibraryOptions>>().Value;
+
+    client.BaseAddress = new Uri(options.BaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+
 })
 .AddPolicyHandler((sp, _) =>
 {
     var logger = sp.GetRequiredService<ILogger<OpenLibraryClient>>();
-    return PollyPolicies.GetCircuitBreakerPolicy(logger);
+    var resilience = sp.GetRequiredService<IOptions<ResilienceOptions>>().Value;
+    return PollyPolicies.GetCircuitBreakerPolicy(logger, resilience);
 })
 .AddPolicyHandler((sp, _) =>
 {
     var logger = sp.GetRequiredService<ILogger<OpenLibraryClient>>();
-    return PollyPolicies.GetRetryPolicy(logger);
+    var resilience = sp.GetRequiredService<IOptions<ResilienceOptions>>().Value;
+    return PollyPolicies.GetRetryPolicy(logger, resilience);
 })
-.AddPolicyHandler(Policy.TimeoutAsync<HttpResponseMessage>(5));
+.AddPolicyHandler((sp, _) =>
+{
+    var resilience = sp.GetRequiredService<IOptions<ResilienceOptions>>().Value;
+    return Policy.TimeoutAsync<HttpResponseMessage>(
+        TimeSpan.FromSeconds(resilience.TimeoutSeconds));
+});
 
 
 builder.Services.AddControllers();
