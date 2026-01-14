@@ -32,6 +32,11 @@ public class BookService : IBookService
         // Title takes precedence if available
         var isTitleSearch = !string.IsNullOrWhiteSpace(title);
 
+        if (!isTitleSearch && query?.Length < 3)
+        {
+            throw new ArgumentException("Query too short, must be at least 3 characters");
+        }
+
         _logger.LogInformation("Executing search with {SearchType}={SearchValue}",
             isTitleSearch ? "title" : "query",
             isTitleSearch ? title : query);
